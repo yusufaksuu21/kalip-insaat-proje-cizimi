@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kalıp Planı — Yapısal Ön Boyutlandırma</title>
+  <meta name="description" content="İnşaat mühendisleri için TS 500 / TBDY 2018 uyumlu kalıp planı ve ön boyutlandırma aracı">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/styles.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</head>
+<body>
+
+<input type="file" id="fileInput" accept=".json" hidden>
+
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <div class="logo-row">
+      <div class="logo-icon">🏗</div>
+      <div>
+        <h1>Kalıp Planı Oluşturucu</h1>
+        <p>Yapısal ön boyutlandırma — TS 500 / TBDY 2018</p>
+      </div>
+    </div>
+    <div class="badges">
+      <span class="badge">TS 500</span>
+      <span class="badge">TBDY 2018</span>
+      <span class="badge">Ön Boyut</span>
+    </div>
+  </div>
+
+  <div class="sidebar-body">
+    <div class="collapsible open">
+      <div class="collapsible-header">
+        <span class="section-title">Proje Ayarları</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="collapsible-body">
+        <div class="form-group">
+          <label for="projectName">Proje Adı</label>
+          <input type="text" id="projectName" value="Örnek Konut Projesi">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="concreteClass">Beton Sınıfı</label>
+            <select id="concreteClass">
+              <option value="25">C25</option>
+              <option value="30" selected>C30</option>
+              <option value="35">C35</option>
+              <option value="40">C40</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="steelClass">Çelik Sınıfı</label>
+            <select id="steelClass">
+              <option value="420" selected>S420</option>
+              <option value="500">S500</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="floors">Kat Sayısı</label>
+            <input type="number" id="floors" min="1" max="20" value="5">
+          </div>
+          <div class="form-group">
+            <label for="floorHeight">Kat Yüksekliği (m)</label>
+            <input type="number" id="floorHeight" min="2.5" max="6" step="0.1" value="3.00">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="bearingCapacity">Zemin Taşıma Gücü (kN/m²)</label>
+          <input type="number" id="bearingCapacity" min="50" max="1000" step="10" value="200">
+          <div class="form-hint">Temel alanı hesabı için (tipik: 150–300 kN/m²)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="collapsible open">
+      <div class="collapsible-header">
+        <span class="section-title">Döşeme Sistemi</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="collapsible-body">
+        <div class="form-group">
+          <label for="slabType">Döşeme Tipi</label>
+          <select id="slabType">
+            <option value="solid">Düz Betonarme Döşeme</option>
+            <option value="ribbed">Kirişli Döşeme</option>
+            <option value="hollow">Boşluklu (Pumice/TT) Döşeme</option>
+            <option value="composite">Kompozit Metal Kafesli</option>
+            <option value="prefab">Prefabrik TT Döşeme</option>
+          </select>
+          <div class="form-hint" id="slabHint">Düz döşeme: tipik kalınlık 12–16 cm</div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="deadLoad">Ek Ölü Yük (kN/m²)</label>
+            <input type="number" id="deadLoad" min="0" step="0.1" value="1.5">
+          </div>
+          <div class="form-group">
+            <label for="liveLoad">Canlı Yük (kN/m²)</label>
+            <input type="number" id="liveLoad" min="0" step="0.1" value="2.0">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="slabThickness">Döşeme Kalınlığı (m)</label>
+          <input type="number" id="slabThickness" min="0.05" max="0.5" step="0.01" value="0.14">
+        </div>
+      </div>
+    </div>
+
+    <div class="collapsible open">
+      <div class="collapsible-header">
+        <span class="section-title">TBDY 2018 — Deprem</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="collapsible-body">
+        <div class="seismic-box">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="eqZone">Deprem Bölgesi</label>
+              <select id="eqZone">
+                <option value="1">1. Bölge (Düşük)</option>
+                <option value="2">2. Bölge</option>
+                <option value="3" selected>3. Bölge (İstanbul)</option>
+                <option value="4">4. Bölge</option>
+                <option value="5">5. Bölge (Yüksek)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="soilClass">Zemin Sınıfı</label>
+              <select id="soilClass">
+                <option value="ZA">ZA (Sert kaya)</option>
+                <option value="ZB">ZB</option>
+                <option value="ZC" selected>ZC (Orta)</option>
+                <option value="ZD">ZD</option>
+                <option value="ZE">ZE (Yumuşak)</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="buildingClass">Bina Kullanım Sınıfı</label>
+              <select id="buildingClass">
+                <option value="1">BKS=1 (Hastane, okul vb.)</option>
+                <option value="2" selected>BKS=2 (Konut, ofis)</option>
+                <option value="3">BKS=3 (Depo, tek katlı)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="structSystem">Taşıyıcı Sistem</label>
+              <select id="structSystem">
+                <option value="frame">Çerçeveli Sistem (CMT)</option>
+                <option value="wall">Perdeli Sistem (PMT)</option>
+                <option value="mixed" selected>Karma Sistem</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="collapsible open">
+      <div class="collapsible-header">
+        <span class="section-title">Kolon Koordinatları</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="collapsible-body">
+        <div class="col-table-wrap">
+          <table class="col-table">
+            <thead><tr><th>No</th><th>X</th><th>Y</th><th>b</th><th>h</th><th></th></tr></thead>
+            <tbody id="columnBody"></tbody>
+          </table>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-sm" id="addColumnBtn">+ Kolon</button>
+          <button class="btn btn-sm" id="loadExampleBtn">Örnek Yükle</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="collapsible open">
+      <div class="collapsible-header">
+        <span class="section-title">Perde Duvarlar</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="collapsible-body">
+        <div class="col-table-wrap">
+          <table class="col-table">
+            <thead><tr><th>No</th><th>X1</th><th>Y1</th><th>X2</th><th>Y2</th><th>t</th><th></th></tr></thead>
+            <tbody id="wallBody"></tbody>
+          </table>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-sm" id="addWallBtn">+ Perde</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="error-msg" id="validationError"></div>
+    <button class="btn btn-accent" id="calculateBtn">⚡ Hesapla ve Çiz</button>
+    <div class="form-hint" style="text-align:center;margin-top:8px">Ctrl+Enter ile hızlı hesap</div>
+  </div>
+</aside>
+
+<main class="main">
+  <header class="topbar">
+    <div class="topbar-left">
+      <div>
+        <div class="topbar-title" id="topbarTitle">Kalıp Planı</div>
+        <div class="topbar-sub" id="topbarSub">Proje parametrelerini girin</div>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <button class="icon-btn" id="saveProjectBtn" title="Projeyi kaydet (Ctrl+S)">💾</button>
+      <button class="icon-btn" id="loadProjectBtn" title="Proje yükle">📂</button>
+      <button class="icon-btn" id="printBtn" title="Raporu yazdır">🖨</button>
+      <button class="icon-btn" id="themeToggleBtn" title="Tema değiştir">🌙</button>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <div class="tab active" data-tab="plan"><span class="tab-icon">📐</span> Kalıp Planı</div>
+    <div class="tab" data-tab="report"><span class="tab-icon">📊</span> Hesap Raporu</div>
+    <div class="tab" data-tab="tools"><span class="tab-icon">🔧</span> Mühendislik Araçları</div>
+    <div class="tab" data-tab="export"><span class="tab-icon">📤</span> Dışa Aktar</div>
+  </nav>
+
+  <!-- Kalıp Planı -->
+  <div class="tab-content active" id="tab-plan">
+    <div id="planPlaceholder" class="placeholder">
+      <div class="placeholder-icon">📐</div>
+      <p><strong>Henüz hesaplama yapılmadı</strong></p>
+      <p style="font-size:.85rem">Sol panelden verileri girin ve <em>Hesapla ve Çiz</em> butonuna tıklayın.</p>
+    </div>
+    <div class="plan-layout" id="planLayout" style="display:none">
+      <div class="canvas-panel">
+        <div class="canvas-toolbar">
+          <button class="icon-btn" id="zoomInBtn" title="Yakınlaştır">+</button>
+          <button class="icon-btn" id="zoomOutBtn" title="Uzaklaştır">−</button>
+          <button class="icon-btn" id="zoomResetBtn" title="Sıfırla">↺</button>
+          <button class="icon-btn" id="zoomFitBtn" title="Sığdır">⊡</button>
+          <span class="sep"></span>
+          <button class="icon-btn active" id="gridToggleBtn" title="Izgara">#</button>
+          <span class="zoom-label" id="zoomLabel">100%</span>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="planCanvas"></canvas>
+          <div class="scale-bar" id="scaleBarLabel">Ölçek: 1 birim = 1 m</div>
+        </div>
+      </div>
+      <aside class="info-panel">
+        <h4>📋 Eleman Detayı</h4>
+        <div id="infoPanelContent">
+          <div class="info-empty">Planda bir elemanın üzerine gelin</div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- Hesap Raporu -->
+  <div class="tab-content" id="tab-report">
+    <div id="reportPlaceholder" class="placeholder">
+      <div class="placeholder-icon">📊</div>
+      <p><strong>Hesap raporu mevcut değil</strong></p>
+    </div>
+    <div id="reportContent" style="display:none">
+      <div class="metrics" id="metricsRow"></div>
+
+      <div class="report-section">
+        <h3>✅ Tasarım Karar Özeti</h3>
+        <div class="design-summary" id="designSummary"></div>
+      </div>
+
+      <div class="report-section">
+        <h3>✅ Mühendislik Kontrolleri</h3>
+        <div class="checks-grid" id="checksGrid"></div>
+      </div>
+
+      <div class="report-section">
+        <h3>⚖️ Yük Kombinasyonları</h3>
+        <div class="load-combo-grid" id="loadComboGrid"></div>
+      </div>
+
+      <div class="report-section" id="seismicSection">
+        <h3>🌍 TBDY 2018 — Deprem Yükü Özeti</h3>
+        <table class="data-table" id="seismicTable"><tbody></tbody></table>
+      </div>
+
+      <div class="report-section">
+        <h3>🏛 Kolon Sonuçları</h3>
+        <table class="data-table" id="columnResultsTable">
+          <thead><tr><th>Kolon</th><th>G (kN)</th><th>E (kN)</th><th>Toplam</th><th>b×h</th><th>λ</th><th>Donatı</th><th>Durum</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="report-section">
+        <h3>📏 Kiriş Sonuçları</h3>
+        <table class="data-table" id="beamResultsTable">
+          <thead><tr><th>Kiriş</th><th>Bağlantı</th><th>Açıklık</th><th>bw</th><th>h</th><th>Donatı</th><th>Kontrol</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="report-section" id="wallSection">
+        <h3>🧱 Perde Duvar Sonuçları</h3>
+        <table class="data-table" id="wallResultsTable">
+          <thead><tr><th>Perde</th><th>Uzunluk</th><th>Kesit</th><th>Kesme</th><th>H/L</th><th>Donatı/m</th><th>Durum</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="disclaimer">Bu hesaplar ön boyutlandırma amaçlıdır. TS 500 ve TBDY 2018 kapsamında yetkili mühendis tarafından doğrulanmalıdır.</div>
+    </div>
+  </div>
+
+  <!-- Mühendislik Araçları -->
+  <div class="tab-content" id="tab-tools">
+    <div id="toolsPlaceholder" class="placeholder">
+      <div class="placeholder-icon">🔧</div>
+      <p><strong>Önce hesaplama yapın</strong></p>
+      <p style="font-size:.85rem">Malzeme miktarları ve temel hesapları burada görüntülenir.</p>
+    </div>
+    <div id="toolsContent" style="display:none">
+      <div class="tools-grid">
+        <div class="tool-card">
+          <h4>🧱 Beton Hacmi</h4>
+          <p class="tool-desc">Kolon, kiriş, perde ve döşeme beton miktarı tahmini</p>
+          <div id="toolConcreteResult"></div>
+        </div>
+        <div class="tool-card">
+          <h4>🔩 Donatı Ağırlığı</h4>
+          <p class="tool-desc">Yaklaşık çelik donatı ihtiyacı (γ=7,85 g/cm³)</p>
+          <div id="toolRebarResult"></div>
+        </div>
+        <div class="tool-card">
+          <h4>🏗 Temel Alanı</h4>
+          <p class="tool-desc">Zemin taşıma gücüne göre gerekli temel alanı</p>
+          <div id="toolFoundationResult"></div>
+        </div>
+        <div class="tool-card">
+          <h4>📐 Kiriş Derinlik Önerisi</h4>
+          <p class="tool-desc">Açıklığa göre L/10, L/12, L/14 kuralları</p>
+          <div id="toolBeamResult"></div>
+        </div>
+      </div>
+      <div class="disclaimer">Malzeme miktarları ön tahmindir. Kesin metraj için detaylı projelendirme yapılmalıdır.</div>
+    </div>
+  </div>
+
+  <!-- Dışa Aktar -->
+  <div class="tab-content" id="tab-export">
+    <div class="export-grid">
+      <div class="export-card">
+        <div class="icon" style="background:#dbeafe;color:#2563eb">📐</div>
+        <h4>DXF — AutoCAD</h4>
+        <p>Kolon, kiriş, perde ve etiket katmanları. 1 birim = 1 cm.</p>
+        <div class="tooltip-wrap">
+          <button class="btn btn-download" id="exportDxfBtn" disabled>kalip_plani.dxf</button>
+          <span class="tooltip-text">Önce hesaplama yapın</span>
+        </div>
+      </div>
+      <div class="export-card">
+        <div class="icon" style="background:#fee2e2;color:#dc2626">📄</div>
+        <h4>PDF Rapor</h4>
+        <p>Deprem özeti, kolon, kiriş, perde tabloları ve malzeme miktarları.</p>
+        <div class="tooltip-wrap">
+          <button class="btn btn-download" id="exportPdfBtn" disabled>hesap_raporu.pdf</button>
+          <span class="tooltip-text">Önce hesaplama yapın</span>
+        </div>
+      </div>
+      <div class="export-card">
+        <div class="icon" style="background:#dcfce7;color:#16a34a">📝</div>
+        <h4>DOCX Rapor</h4>
+        <p>Word uyumlu tam hesap raporu.</p>
+        <div class="tooltip-wrap">
+          <button class="btn btn-download" id="exportDocxBtn" disabled>hesap_raporu.docx</button>
+          <span class="tooltip-text">Önce hesaplama yapın</span>
+        </div>
+      </div>
+      <div class="export-card">
+        <div class="icon" style="background:#fef3c7;color:#d97706">💾</div>
+        <h4>JSON Proje</h4>
+        <p>Tüm proje verilerini kaydedin ve daha sonra tekrar yükleyin.</p>
+        <button class="btn btn-download" id="exportJsonBtn">proje_kayit.json</button>
+      </div>
+    </div>
+    <div class="disclaimer" style="margin-top:22px">Bu hesaplar ön boyutlandırma amaçlıdır. TS 500 ve TBDY 2018 kapsamında yetkili mühendis tarafından doğrulanmalıdır.</div>
+  </div>
+</main>
+
+<div class="toast-container" id="toastContainer"></div>
+<div class="loading-overlay" id="loadingOverlay"><div class="spinner"></div></div>
+
+<script src="assets/js/config.js"></script>
+<script src="assets/js/calculations.js"></script>
+<script src="assets/js/canvas.js"></script>
+<script src="assets/js/export.js"></script>
+<script src="assets/js/storage.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>
