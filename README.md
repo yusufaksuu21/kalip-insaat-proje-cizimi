@@ -68,12 +68,6 @@ Bu proje herhangi bir kurulum gerektirmez.
 
 
 
-## Kullanim ve Geri Bildirim
-
-Bu projeyi kullanmak, incelemek veya kendi projenize temel almak serbesttir. Eger isinizde, okul projenizde ya da baska bir calismada faydalanirsaniz GitHub uzerinden star vermeniz, fork olarak kullanmaniz veya issue/discussion acarak haber vermeniz beni mutlu eder.
-
-Projeyi gelistirirken hata, eksik hesap veya yeni ozellik fikri gorurseniz pull request ya da issue acabilirsiniz.
-
 ## Gelistirme Fikirleri
 
 - Proje ekran goruntuleri eklenebilir.

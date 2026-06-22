@@ -691,6 +691,15 @@ body {
   color: #fbbf24;
 }
 
+.site-footer {
+  padding: 14px 20px 18px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: .76rem;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+
 /* ── Toast ── */
 .toast-container {
   position: fixed;
@@ -747,7 +756,7 @@ body {
 
 /* ── Print ── */
 @media print {
-  .sidebar, .topbar, .tabs, .canvas-toolbar, .toast-container, .loading-overlay { display: none !important; }
+  .sidebar, .topbar, .tabs, .canvas-toolbar, .toast-container, .loading-overlay, .site-footer { display: none !important; }
   .main { height: auto; }
   .tab-content { display: block !important; padding: 0; }
   .tab-content:not(#tab-report) { display: none !important; }
