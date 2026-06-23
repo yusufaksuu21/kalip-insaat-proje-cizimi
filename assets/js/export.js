@@ -15,178 +15,187 @@ const Export = (() => {
     columnResults.forEach(c => { crMap[c.id] = c; });
     const wrMap = {};
     wallResults.forEach(w => { wrMap[w.id] = w; });
-    const L = [], a = s => L.push(s);
-    
-    // HEADER SECTION
+
+    // --- Bounds hesabı (tüm koordinatlar cm cinsinden) ---
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    const upd = (x, y) => { minX = Math.min(minX, x); minY = Math.min(minY, y); maxX = Math.max(maxX, x); maxY = Math.max(maxY, y); };
+
+    columns.forEach(col => {
+      const x = col.x * 100, y = col.y * 100;
+      const cr = crMap[col.id];
+      if (cr) { upd(x - cr.sb/2, y - cr.sh/2); upd(x + cr.sb/2, y + cr.sh/2); } else { upd(x, y); }
+    });
+
+    walls.forEach(w => {
+      const x1 = w.x1*100, y1 = w.y1*100, x2 = w.x2*100, y2 = w.y2*100;
+      const wr = wrMap[w.id];
+      if (wr) {
+        const len = Math.hypot(x2-x1, y2-y1);
+        if (len > 0) {
+          const nx = -(y2-y1)/len*(wr.tw/2), ny = (x2-x1)/len*(wr.tw/2);
+          upd(x1+nx,y1+ny); upd(x2+nx,y2+ny); upd(x2-nx,y2-ny); upd(x1-nx,y1-ny);
+        }
+      } else { upd(x1,y1); upd(x2,y2); }
+    });
+
+    if (minX === Infinity) { minX = 0; minY = 0; maxX = 1000; maxY = 1000; }
+
+    const pad = Math.max(200, (maxX-minX)*0.1, (maxY-minY)*0.1);
+    minX -= pad; minY -= pad; maxX += pad; maxY += pad;
+    const cx = (minX+maxX)/2, cy = (minY+maxY)/2;
+
+    const L = [], a = s => L.push(String(s));
+    let hc = 1;
+    const nh = () => (hc++).toString(16).toUpperCase();
+
+    // HEADER
     a('0'); a('SECTION'); a('2'); a('HEADER');
-    // Gerekli sistem değişkenleri
-    [
-      ['$ACADVER', '1', 'AC1027'],  // AutoCAD 2013
-      ['$EXTMIN', '10', '0', '20', '0', '30', '0'],
-      ['$EXTMAX', '10', '10000', '20', '10000', '30', '0'],
-      ['$LIMMIN', '10', '0', '20', '0'],
-      ['$LIMMAX', '10', '420', '20', '297'],
-      ['$UNITS', '70', '4'],  // Metric
-      ['$MEASUREMENT', '70', '1'],  // Metric
-      ['$LUNITS', '70', '2'],  // Decimal
-      ['$LUPREC', '70', '4'],  // 4 decimal places
-      ['$DIMUNIT', '70', '1'],  // Metric
-      ['$DIMSCALE', '40', '1'],
-      ['$DIMASZ', '40', '2.5']
-    ].forEach(vars => {
-      a('9'); a(vars[0]);
-      for(let i = 1; i < vars.length; i += 2) {
-        a(vars[i]); a(vars[i + 1]);
-      }
-    });
+    a('9'); a('$ACADVER'); a('1'); a('AC1015');
+    a('9'); a('$DWGCODEPAGE'); a('3'); a('ANSI_1252');
+    a('9'); a('$EXTMIN'); a('10'); a(minX.toFixed(4)); a('20'); a(minY.toFixed(4)); a('30'); a('0.0000');
+    a('9'); a('$EXTMAX'); a('10'); a(maxX.toFixed(4)); a('20'); a(maxY.toFixed(4)); a('30'); a('0.0000');
+    a('9'); a('$LIMMIN'); a('10'); a(minX.toFixed(4)); a('20'); a(minY.toFixed(4));
+    a('9'); a('$LIMMAX'); a('10'); a(maxX.toFixed(4)); a('20'); a(maxY.toFixed(4));
+    a('9'); a('$INSUNITS'); a('70'); a('4');
+    a('9'); a('$MEASUREMENT'); a('70'); a('1');
     a('0'); a('ENDSEC');
-    
-    // TABLES SECTION
+
+    // TABLES
     a('0'); a('SECTION'); a('2'); a('TABLES');
-    
-    // Layer Table
-    a('0'); a('TABLE'); a('2'); a('LAYER'); a('70'); a('5');
-    const layers = [
-      { name: '0', color: 7, linetype: 'CONTINUOUS' },
-      { name: 'KOLONLAR', color: 5, linetype: 'CONTINUOUS' },
-      { name: 'KIRISLER', color: 1, linetype: 'CONTINUOUS' },
-      { name: 'PERDELER', color: 3, linetype: 'CONTINUOUS' },
-      { name: 'KOLON_NO', color: 7, linetype: 'CONTINUOUS' },
-      { name: 'PERDE_NO', color: 3, linetype: 'CONTINUOUS' }
-    ];
-    layers.forEach(l => {
-      a('0'); a('LAYER'); a('2'); a(l.name); a('70'); a('0'); a('62'); a(String(l.color)); a('6'); a(l.linetype);
+
+    // VPORT — her group code için doğru subclass marker sırası
+    a('0'); a('TABLE'); a('2'); a('VPORT'); a('5'); a(nh()); a('330'); a('0'); a('100'); a('AcDbSymbolTable'); a('70'); a('1');
+    a('0'); a('VPORT'); a('5'); a(nh()); a('330'); a('0');
+    a('100'); a('AcDbSymbolTableRecord');
+    a('100'); a('AcDbViewportTableRecord');
+    a('2'); a('*ACTIVE'); a('70'); a('0');
+    a('10'); a('0.0000'); a('20'); a('0.0000');
+    a('11'); a('1.0000'); a('21'); a('1.0000');
+    a('12'); a(cx.toFixed(4)); a('22'); a(cy.toFixed(4));
+    a('13'); a('0.0000'); a('23'); a('0.0000');
+    a('14'); a('10.0000'); a('24'); a('10.0000');
+    a('15'); a('10.0000'); a('25'); a('10.0000');
+    a('16'); a('0.0000'); a('26'); a('0.0000'); a('36'); a('1.0000');
+    a('17'); a('0.0000'); a('27'); a('0.0000'); a('37'); a('0.0000');
+    a('40'); a(((maxY-minY)*1.5).toFixed(4));
+    a('41'); a('1.0000'); a('42'); a('50.0000'); a('43'); a('0.0000'); a('44'); a('4.0000');
+    a('50'); a('0.0000'); a('51'); a('0.0000');
+    a('71'); a('0'); a('72'); a('1000'); a('73'); a('1'); a('74'); a('3');
+    a('75'); a('0'); a('76'); a('0'); a('77'); a('0'); a('78'); a('0');
+    a('0'); a('ENDTAB');
+
+    // LTYPE
+    a('0'); a('TABLE'); a('2'); a('LTYPE'); a('5'); a(nh()); a('330'); a('0'); a('100'); a('AcDbSymbolTable'); a('70'); a('1');
+    a('0'); a('LTYPE'); a('5'); a(nh()); a('330'); a('0'); a('100'); a('AcDbSymbolTableRecord'); a('100'); a('AcDbLinetypeTableRecord');
+    a('2'); a('CONTINUOUS'); a('70'); a('0'); a('3'); a('Solid line'); a('72'); a('65'); a('73'); a('0'); a('40'); a('0.0');
+    a('0'); a('ENDTAB');
+
+    // LAYER
+    const layers = [['0',7],['KOLONLAR',5],['KIRISLER',1],['PERDELER',3],['KOLON_NO',7],['PERDE_NO',3]];
+    a('0'); a('TABLE'); a('2'); a('LAYER'); a('5'); a(nh()); a('330'); a('0'); a('100'); a('AcDbSymbolTable'); a('70'); a(String(layers.length));
+    layers.forEach(([lname, lcolor]) => {
+      a('0'); a('LAYER'); a('5'); a(nh()); a('330'); a('0'); a('100'); a('AcDbSymbolTableRecord'); a('100'); a('AcDbLayerTableRecord');
+      a('2'); a(lname); a('70'); a('0'); a('62'); a(String(lcolor)); a('6'); a('CONTINUOUS');
     });
     a('0'); a('ENDTAB');
-    
-    // Style Table
-    a('0'); a('TABLE'); a('2'); a('STYLE'); a('70'); a('1');
-    a('0'); a('STYLE'); a('2'); a('STANDARD'); a('70'); a('0'); a('40'); a('0'); a('41'); a('1'); a('50'); a('0'); a('71'); a('0');
+
+    // STYLE
+    a('0'); a('TABLE'); a('2'); a('STYLE'); a('5'); a(nh()); a('330'); a('0'); a('100'); a('AcDbSymbolTable'); a('70'); a('1');
+    a('0'); a('STYLE'); a('5'); a(nh()); a('330'); a('0'); a('100'); a('AcDbSymbolTableRecord'); a('100'); a('AcDbTextStyleTableRecord');
+    a('2'); a('STANDARD'); a('70'); a('0'); a('40'); a('0.0'); a('41'); a('1.0'); a('50'); a('0.0'); a('71'); a('0'); a('42'); a('2.5'); a('3'); a('txt'); a('4'); a('');
     a('0'); a('ENDTAB');
-    
-    // View Table
-    a('0'); a('TABLE'); a('2'); a('VIEW'); a('70'); a('0');
+
+    // VIEW
+    a('0'); a('TABLE'); a('2'); a('VIEW'); a('5'); a(nh()); a('330'); a('0'); a('100'); a('AcDbSymbolTable'); a('70'); a('0');
     a('0'); a('ENDTAB');
-    
-    // UCS Table
-    a('0'); a('TABLE'); a('2'); a('UCS'); a('70'); a('0');
+
+    // UCS
+    a('0'); a('TABLE'); a('2'); a('UCS'); a('5'); a(nh()); a('330'); a('0'); a('100'); a('AcDbSymbolTable'); a('70'); a('0');
     a('0'); a('ENDTAB');
-    
+
+    // APPID
+    a('0'); a('TABLE'); a('2'); a('APPID'); a('5'); a(nh()); a('330'); a('0'); a('100'); a('AcDbSymbolTable'); a('70'); a('1');
+    a('0'); a('APPID'); a('5'); a(nh()); a('330'); a('0'); a('100'); a('AcDbSymbolTableRecord'); a('100'); a('AcDbRegAppTableRecord');
+    a('2'); a('ACAD'); a('70'); a('0');
+    a('0'); a('ENDTAB');
+
+    // DIMSTYLE
+    a('0'); a('TABLE'); a('2'); a('DIMSTYLE'); a('5'); a(nh()); a('330'); a('0'); a('100'); a('AcDbSymbolTable'); a('70'); a('1');
+    a('0'); a('DIMSTYLE'); a('105'); a(nh()); a('330'); a('0'); a('100'); a('AcDbSymbolTableRecord'); a('100'); a('AcDbDimStyleTableRecord');
+    a('2'); a('STANDARD'); a('70'); a('0');
+    a('0'); a('ENDTAB');
+
     a('0'); a('ENDSEC');
-    
+
     // BLOCKS SECTION
     a('0'); a('SECTION'); a('2'); a('BLOCKS');
-    
-    // Model Space Block
-    a('0'); a('BLOCK'); a('8'); a('0'); a('2'); a('*MODEL_SPACE'); a('70'); a('0');
-    a('10'); a('0'); a('20'); a('0'); a('30'); a('0');
-    a('3'); a('*MODEL_SPACE');
-    a('1'); a('');
-    a('0'); a('ENDBLK'); a('8'); a('0');
-    
-    // Paper Space Block
-    a('0'); a('BLOCK'); a('8'); a('0'); a('2'); a('*PAPER_SPACE0'); a('70'); a('0');
-    a('10'); a('0'); a('20'); a('0'); a('30'); a('0');
-    a('3'); a('*PAPER_SPACE0');
-    a('1'); a('');
-    a('0'); a('ENDBLK'); a('8'); a('0');
-    
+    a('0'); a('BLOCK'); a('5'); a(nh()); a('330'); a('1F'); a('100'); a('AcDbEntity'); a('8'); a('0'); a('100'); a('AcDbBlockBegin');
+    a('2'); a('*MODEL_SPACE'); a('70'); a('0'); a('10'); a('0.0'); a('20'); a('0.0'); a('30'); a('0.0'); a('3'); a('*MODEL_SPACE'); a('1'); a('');
+    a('0'); a('ENDBLK'); a('5'); a(nh()); a('330'); a('1F'); a('100'); a('AcDbEntity'); a('8'); a('0'); a('100'); a('AcDbBlockEnd');
     a('0'); a('ENDSEC');
-    
+
     // ENTITIES SECTION
     a('0'); a('SECTION'); a('2'); a('ENTITIES');
 
     for (const col of columns) {
-      const cr = crMap[col.id], cx = col.x * 100, cy = col.y * 100, hw = cr.sb / 2, hh = cr.sh / 2;
-      const pts = [[cx - hw, cy - hh], [cx + hw, cy - hh], [cx + hw, cy + hh], [cx - hw, cy + hh]];
-      
-      // LWPOLYLINE for column rectangle
-      a('0'); a('LWPOLYLINE');
-      a('5'); a(Math.random().toString(36).substr(2, 8)); // Handle
-      a('100'); a('AcDbEntity');
-      a('8'); a('KOLONLAR'); // Layer
-      a('100'); a('AcDbLwpolyline');
-      a('90'); a('4'); // Number of vertices
-      a('70'); a('1'); // Closed polyline
-      pts.forEach(([px, py]) => { 
-        a('10'); a(px.toFixed(2)); 
-        a('20'); a(py.toFixed(2)); 
-      });
-      
-      // TEXT for column label
-      a('0'); a('TEXT');
-      a('5'); a(Math.random().toString(36).substr(2, 8)); // Handle
-      a('100'); a('AcDbEntity');
-      a('8'); a('KOLON_NO'); // Layer
+      const cr = crMap[col.id];
+      const ccx = col.x * 100, ccy = col.y * 100, hw = cr.sb / 2, hh = cr.sh / 2;
+      const pts = [[ccx-hw,ccy-hh],[ccx+hw,ccy-hh],[ccx+hw,ccy+hh],[ccx-hw,ccy+hh]];
+
+      a('0'); a('LWPOLYLINE'); a('5'); a(nh()); a('330'); a('0');
+      a('100'); a('AcDbEntity'); a('8'); a('KOLONLAR');
+      a('100'); a('AcDbLwPolyline'); a('90'); a('4'); a('70'); a('1');
+      pts.forEach(([px,py]) => { a('10'); a(px.toFixed(2)); a('20'); a(py.toFixed(2)); });
+
+      a('0'); a('TEXT'); a('5'); a(nh()); a('330'); a('0');
+      a('100'); a('AcDbEntity'); a('8'); a('KOLON_NO');
       a('100'); a('AcDbText');
-      a('10'); a(cx.toFixed(2)); // X
-      a('20'); a((cy + hh + 30).toFixed(2)); // Y
-      a('30'); a('0'); // Z
-      a('40'); a('25'); // Height
-      a('1'); a(col.label); // Text
-      a('50'); a('0'); // Rotation
+      a('10'); a(ccx.toFixed(2)); a('20'); a((ccy+hh+30).toFixed(2)); a('30'); a('0.0');
+      a('40'); a('25'); a('1'); a(col.label); a('50'); a('0.0');
+      a('100'); a('AcDbText');
     }
 
     for (const b of beams) {
-      a('0'); a('LINE');
-      a('5'); a(Math.random().toString(36).substr(2, 8)); // Handle
-      a('100'); a('AcDbEntity');
-      a('8'); a('KIRISLER'); // Layer
+      a('0'); a('LINE'); a('5'); a(nh()); a('330'); a('0');
+      a('100'); a('AcDbEntity'); a('8'); a('KIRISLER');
       a('100'); a('AcDbLine');
-      a('10'); a((b.x1 * 100).toFixed(2)); // X1
-      a('20'); a((b.y1 * 100).toFixed(2)); // Y1
-      a('30'); a('0'); // Z1
-      a('11'); a((b.x2 * 100).toFixed(2)); // X2
-      a('21'); a((b.y2 * 100).toFixed(2)); // Y2
-      a('31'); a('0'); // Z2
+      a('10'); a((b.x1*100).toFixed(2)); a('20'); a((b.y1*100).toFixed(2)); a('30'); a('0.0');
+      a('11'); a((b.x2*100).toFixed(2)); a('21'); a((b.y2*100).toFixed(2)); a('31'); a('0.0');
     }
 
     for (const w of walls) {
-      const wr = wrMap[w.id], len = Math.hypot(w.x2 - w.x1, w.y2 - w.y1);
-      const nx = -(w.y2 - w.y1) / len * (wr.tw / 2), ny = (w.x2 - w.x1) / len * (wr.tw / 2);
-      const x1 = w.x1 * 100, y1 = w.y1 * 100, x2 = w.x2 * 100, y2 = w.y2 * 100;
-      const pts = [[x1 + nx, y1 + ny], [x2 + nx, y2 + ny], [x2 - nx, y2 - ny], [x1 - nx, y1 - ny]];
-      
-      // LWPOLYLINE for wall rectangle
-      a('0'); a('LWPOLYLINE');
-      a('5'); a(Math.random().toString(36).substr(2, 8)); // Handle
-      a('100'); a('AcDbEntity');
-      a('8'); a('PERDELER'); // Layer
-      a('100'); a('AcDbLwpolyline');
-      a('90'); a('4'); // Number of vertices
-      a('70'); a('1'); // Closed polyline
-      pts.forEach(([px, py]) => { 
-        a('10'); a(px.toFixed(2)); 
-        a('20'); a(py.toFixed(2)); 
-      });
-      
-      // TEXT for wall label
-      a('0'); a('TEXT');
-      a('5'); a(Math.random().toString(36).substr(2, 8)); // Handle
-      a('100'); a('AcDbEntity');
-      a('8'); a('PERDE_NO'); // Layer
+      const wr = wrMap[w.id];
+      const x1=w.x1*100, y1=w.y1*100, x2=w.x2*100, y2=w.y2*100;
+      const len = Math.hypot(x2-x1, y2-y1);
+      const nx = -(y2-y1)/len*(wr.tw/2), ny = (x2-x1)/len*(wr.tw/2);
+      const pts = [[x1+nx,y1+ny],[x2+nx,y2+ny],[x2-nx,y2-ny],[x1-nx,y1-ny]];
+
+      a('0'); a('LWPOLYLINE'); a('5'); a(nh()); a('330'); a('0');
+      a('100'); a('AcDbEntity'); a('8'); a('PERDELER');
+      a('100'); a('AcDbLwPolyline'); a('90'); a('4'); a('70'); a('1');
+      pts.forEach(([px,py]) => { a('10'); a(px.toFixed(2)); a('20'); a(py.toFixed(2)); });
+
+      a('0'); a('TEXT'); a('5'); a(nh()); a('330'); a('0');
+      a('100'); a('AcDbEntity'); a('8'); a('PERDE_NO');
       a('100'); a('AcDbText');
-      a('10'); a(((x1 + x2) / 2).toFixed(2)); // X
-      a('20'); a(((y1 + y2) / 2 + wr.tw / 2 + 20).toFixed(2)); // Y
-      a('30'); a('0'); // Z
-      a('40'); a('20'); // Height
-      a('1'); a(w.label); // Text
-      a('50'); a('0'); // Rotation
+      a('10'); a(((x1+x2)/2).toFixed(2)); a('20'); a(((y1+y2)/2+wr.tw/2+20).toFixed(2)); a('30'); a('0.0');
+      a('40'); a('20'); a('1'); a(w.label); a('50'); a('0.0');
+      a('100'); a('AcDbText');
     }
 
     a('0'); a('ENDSEC');
-    
+
     // OBJECTS SECTION
     a('0'); a('SECTION'); a('2'); a('OBJECTS');
-    a('0'); a('DICTIONARY'); a('5'); a('C'); a('330'); a('0');
+    a('0'); a('DICTIONARY'); a('5'); a('C'); a('330'); a('0'); a('100'); a('AcDbDictionary');
     a('3'); a('ACAD_GROUP'); a('350'); a('D');
-    a('0'); a('DICTIONARY'); a('5'); a('D'); a('330'); a('C');
+    a('0'); a('DICTIONARY'); a('5'); a('D'); a('330'); a('C'); a('100'); a('AcDbDictionary');
     a('0'); a('ENDSEC');
-    
+
     // EOF
     a('0'); a('EOF');
-    
-    return L.join('\n');
+
+    return L.join('\r\n');
   }
 
   function projectParamsRows(p, wu) {

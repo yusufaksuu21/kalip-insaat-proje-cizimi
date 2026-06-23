@@ -327,9 +327,23 @@ const App = (() => {
       setTimeout(() => window.print(), 300);
     };
 
-    document.getElementById('exportDxfBtn').onclick = () => { if (state.calculated) { Export.exportDXF(state); toast('DXF indirildi', 'success'); } };
-    document.getElementById('exportPdfBtn').onclick = () => { if (state.calculated) { Export.exportPDF(state); toast('PDF indirildi', 'success'); } };
-    document.getElementById('exportDocxBtn').onclick = async () => { if (state.calculated) { await Export.exportDOCX(state); toast('DOCX indirildi', 'success'); } };
+    document.getElementById('exportDxfBtn').onclick = () => {
+      if (!state.calculated) { toast('Önce hesaplama yapın', 'error'); return; }
+      try { Export.exportDXF(state); toast('DXF indirildi', 'success'); }
+      catch(e) { console.error('DXF hatası:', e); toast('DXF oluşturulurken hata: ' + e.message, 'error'); }
+    };
+    document.getElementById('exportPdfBtn').onclick = () => {
+      if (!state.calculated) { toast('Önce hesaplama yapın', 'error'); return; }
+      if (!window.jspdf) { toast('jsPDF kütüphanesi yüklenemedi. İnternet bağlantısını kontrol edin.', 'error'); return; }
+      try { Export.exportPDF(state); toast('PDF indirildi', 'success'); }
+      catch(e) { console.error('PDF hatası:', e); toast('PDF oluşturulurken hata: ' + e.message, 'error'); }
+    };
+    document.getElementById('exportDocxBtn').onclick = async () => {
+      if (!state.calculated) { toast('Önce hesaplama yapın', 'error'); return; }
+      if (!window.JSZip) { toast('JSZip kütüphanesi yüklenemedi. İnternet bağlantısını kontrol edin.', 'error'); return; }
+      try { await Export.exportDOCX(state); toast('DOCX indirildi', 'success'); }
+      catch(e) { console.error('DOCX hatası:', e); toast('DOCX oluşturulurken hata: ' + e.message, 'error'); }
+    };
     document.getElementById('exportJsonBtn').onclick = () => Export.exportJSON(state);
 
     document.getElementById('bearingCapacity').addEventListener('input', () => {
